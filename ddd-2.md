@@ -45,82 +45,46 @@ Nesta aula, vamos:
 #### **2.1 Bounded Contexts do DIVIDI**
 - **Grupos & Despesas**
 - **Rateio**
-- **Liquidação Pix (Conciliação)**
+- **Liquidação Pix**
 - **Ledger & Saldos**
 - **Notificações & Lembretes**
 - **Recorrências & Fechamento**
-- **IAM (Autenticação & Autorização)**
-- **Compliance & Auditoria**
-- **Relatórios & Exportações**
-- **Observabilidade**
-- **Onboarding & Templates**
-- **Planos & Entitlements**
-- **Armazenamento de Arquivos**
-- **Analytics de Produto**
-- **OCR & Leitura de Recibos**
+- **OCR & Recibos**
+- **Provedor OCR (Externo)**
+- **PSPs / SPI Pix (Externo)**
 
 #### **2.2 Padrões de Context Mapping utilizados**
 - **Customer–Supplier**
 - **Conformist**
-- **Shared Kernel** *(não aplicado neste mapeamento para manter fronteiras bem isoladas)*
 - **Anticorruption Layer (ACL)**
-- **Published Language** (eventos e contratos estáveis)
-- **Open-Host Service** (API pública com contrato claro)
 - **Partnership** (codependência colaborativa e alinhamento frequente)
 - **Separate Ways** (baixo acoplamento; evoluem em paralelo)
 - **Upstream–Downstream** (quem define contrato/linguagem e quem consome)
 
 #### **2.3 Relações entre Contextos**
-| **Origem**                           | **Destino**                           | **Tipo de Relacionamento**                                | **Explicação** |
-|-------------------------------------|---------------------------------------|-----------------------------------------------------------|----------------|
-| **Grupos & Despesas**               | **Rateio**                            | **Customer–Supplier + Published Language**                | Despesas criadas/atualizadas em Grupos geram eventos (`DespesaCriada`, `DespesaAtualizada`) consumidos por Rateio para calcular cotas. |
-| **Rateio**                          | **Ledger & Saldos**                   | **Upstream–Downstream + Published Language**              | Rateio publica `CotasCalculadas`; Ledger materializa lançamentos mantendo soma-zero e auditabilidade. |
-| **Liquidação Pix (Conciliação)**    | **Ledger & Saldos**                   | **Upstream–Downstream + Published Language**              | Liquidação emite `PagamentoLiquidado`/`PagamentoRevertido`; Ledger registra entradas imutáveis. |
-| **Recorrências & Fechamento**       | **Rateio**                            | **Customer–Supplier + Published Language**                | Fechamento dispara ciclos (`CicloEncerrado`) e/ou gera despesas/ajustes; Rateio recalcula. |
-| **Recorrências & Fechamento**       | **Liquidação Pix (Conciliação)**      | **Customer–Supplier**                                     | Dispara geração de cobranças do período (comandos síncronos). |
-| **Grupos & Despesas**               | **Liquidação Pix (Conciliação)**      | **Customer–Supplier**                                     | Solicita quitação de despesa/saldo; Liquidação orquestra conciliação Pix. |
-| **Liquidação Pix (Conciliação)**    | **Notificações & Lembretes**          | **Upstream–Downstream + Published Language**              | Evento `PagamentoConfirmado` aciona lembretes/avisos aos participantes. |
-| **Ledger & Saldos**                 | **Relatórios & Exportações**          | **Customer–Supplier + Published Language**                | Relatórios consomem projeções/saldos e eventos `LancamentoRegistrado` para gerar documentos. |
-| **Relatórios & Exportações**        | **Armazenamento de Arquivos**         | **Customer–Supplier (Open-Host Service)**                 | Envia artefatos (CSV/PDF) a uma API/SDK estável de storage e recebe ponteiro/URL. |
-| **Armazenamento de Arquivos**       | **Relatórios & Exportações**          | **Published Language**                                     | Evento `ArquivoDisponivel { fileId, url }` notifica conclusão de upload. |
-| **OCR & Leitura de Recibos**        | **Grupos & Despesas**                 | **Customer–Supplier + Published Language**                | Evento `ReciboInterpretado` cria *drafts* de despesa para confirmação pelo usuário. |
-| **Onboarding & Templates**          | **Grupos & Despesas**                 | **Customer–Supplier (Open-Host Service)**                 | Criação de grupos a partir de *templates* via API clara e estável. |
-| **IAM (AuthN/AuthZ)**               | **Todos os Contextos**                | **Open-Host Service + Conformist + Published Language**   | JWT/claims (`tenantId`, `scopes`) padronizados; os demais contextos **conformam-se**. |
-| **Planos & Entitlements**           | **Todos os Contextos**                | **Open-Host Service + Conformist**                        | Checagem de direitos/limites e feature flags; consumidores seguem o contrato do provedor. |
-| **Compliance & Auditoria**          | **Todos os Contextos**                | **Upstream–Downstream + Published Language**              | Todos publicam `Audit.EventoRegistrado` com `actorId`, `ação`, `recurso`, `traceId`. |
-| **Observabilidade**                 | **Todos os Contextos**                | **Separate Ways + Published Language (telemetria)**       | Telemetria (OpenTelemetry) é coletada sem contaminar o domínio. |
-| **Analytics de Produto**            | **Todos os Contextos**                | **Separate Ways + Published Language (eventos de produto)**| Coleta de eventos de uso/engajamento separados do domínio de negócio. |
-| **Rateio** ↔ **Liquidação Pix**     | **Partnership + Published Language**                      | **Alinhamento fino** (ex.: arredondamentos/centavos) para garantir que o valor cobrado é exatamente o valor calculado. |
-| **Liquidação Pix (Conciliação)**    | **PSPs/SPI (externo)**                | **Anticorruption Layer (ACL)**                            | Adapters protegem o modelo do domínio de variações dos provedores Pix. |
-| **OCR & Leitura de Recibos**        | **Provedor OCR (externo)**            | **Anticorruption Layer (ACL)**                            | Tradução de formatos/ruídos do provedor para o modelo interno. |
+| **Origem**                     | **Destino**                   | **Tipo de Relacionamento**        | **Explicação** |
+|--------------------------------|-------------------------------|-----------------------------------|----------------|
+| **OCR & Recibos**              | **Grupos & Despesas**         | **Customer–Supplier**             | OCR envia evento `ReciboInterpretado` que gera drafts de despesas. |
+| **OCR & Recibos**              | **Provedor OCR (Externo)**    | **Anticorruption Layer (ACL)**    | Tradução do resultado externo para o modelo interno. |
+| **Grupos & Despesas**          | **Rateio**                    | **Customer–Supplier**             | Eventos de criação/atualização de despesas (`DespesaCriada`) são consumidos por Rateio. |
+| **Grupos & Despesas**          | **Liquidação Pix**            | **Customer–Supplier**             | Solicita quitação de despesa/saldo. |
+| **Rateio**                     | **Ledger & Saldos**           | **Upstream–Downstream**           | Rateio gera `CotasCalculadas` consumidas pelo Ledger. |
+| **Liquidação Pix**             | **Ledger & Saldos**           | **Upstream–Downstream**           | Liquidação emite `PagamentoLiquidado` que atualiza Ledger. |
+| **Liquidação Pix**             | **Notificações & Lembretes**  | **Upstream–Downstream**           | Liquidação confirma pagamento e dispara `PagamentoConfirmado`. |
+| **Liquidação Pix**             | **PSPs / SPI Pix (Externo)**  | **Anticorruption Layer (ACL)**    | Protege o domínio de integrações com provedores Pix. |
+| **Recorrências & Fechamento**  | **Rateio**                    | **Customer–Supplier**             | Fechamento dispara ciclos (`CicloEncerrado`). |
+| **Recorrências & Fechamento**  | **Liquidação Pix**            | **Customer–Supplier**             | Gera cobranças para liquidação. |
 
 #### **2.4 Diagrama no Draw.io (LucidChart)**
 
 - [Acessar diagrama no LucidChart](https://lucid.app/lucidchart/46c1c0f6-7610-4f50-b6bd-768f6dff1bbb/edit?viewport_loc=58%2C-340%2C3186%2C1572%2C0_0&invitationId=inv_8a3f5ef5-0312-4d76-9fe2-2efb6464d44e)  
 
 #### **2.5 Justificativas das escolhas**
-- **Published Language (PL):** eventos padronizados (DespesaCriada, PagamentoLiquidado, etc.) reduzem ambiguidade e permitem evolução independente.
+- **Customer–Supplier:** usado quando um contexto depende do outro para executar sua função (ex.: Grupos envia despesas para Rateio).  
+- **Upstream–Downstream:** o contexto upstream define os contratos/eventos que o downstream consome (ex.: Rateio → Ledger).  
+- **ACL:** usado nos limites com sistemas externos (OCR e PSPs Pix).  
+- **Partnership:** pode ser aplicado em pontos de alinhamento crítico (ex.: Rateio ↔ Liquidação, se houver dependência forte de valores).  
+- **Separate Ways:** reservado para contextos de telemetria/analytics (não incluídos no diagrama simplificado).  
+- **Conformist:** pode aparecer em integrações onde o consumidor adota integralmente o modelo do fornecedor, mas não foi evidenciado no fluxograma atual.  
 
-- **Customer–Supplier / Upstream–Downstream:** clareza sobre quem fornece e quem consome contratos.
-
-- **Open-Host Service:** IAM, Entitlements e Storage expõem APIs estáveis; consumidores se conformam.
-
-- **ACL:** protege o domínio de variações externas (PSPs Pix, OCR).
-
-- **Separate Ways:** Observabilidade e Analytics evoluem em paralelo, sem poluir o modelo de negócio.
-
-- **Partnership:** Rateio e Liquidação mantêm alinhamento próximo para evitar inconsistências financeiras.
-
-
-## 📌 Aula 3: Próximos Passos  
-Na próxima aula, vamos explorar **Design Tático**, abordando:  
-🔹 **Entidades vs. Value Objects** – Como diferenciar e modelar corretamente.  
-🔹 **Agregados** – Como definir o agregado raiz e garantir consistência.  
-🔹 **Repositórios** – Como separar persistência da lógica de domínio.  
-
-📌 **Prepare-se!** Tente aplicar **Context Mapping** no seu projeto antes da próxima aula.  
-
----
-
-**📢 Bom trabalho! Nos vemos na próxima aula! 🚀**  
 
