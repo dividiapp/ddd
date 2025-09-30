@@ -1,9 +1,4 @@
-# 📚 Trabalho — Design Tático no DDD (Template para qualquer domínio)
-
-> **Como usar:** copie este arquivo e substitua os **[colchetes]** com informações do **seu domínio** (e-commerce, marketplace, logística, educação, fintech, games, etc.).
-> O objetivo é praticar Entidades, Value Objects, Agregados/AR, Repositórios e Eventos de Domínio — com foco em **invariantes** e **domínio rico**.
-
----
+# 📚 Trabalho — Design Tático no DDD
 
 ## 🚀 Quick start (5 passos)
 1. Escolha um **domínio** que você conheça (ex.: **[Seu Domínio]**).
@@ -15,9 +10,9 @@
 ---
 
 ## 🩺 1) Sobre o Domínio Escolhido
-**Nome do domínio:** **[Seu Domínio]**  
-**Objetivo do sistema:** **[Frase curta que explica a proposta de valor]**  
-**Principais atores:** **[Lista: Cliente, Vendedor, Motorista, Professor, etc.]**  
+**Nome do domínio:** Ledger - Saldos e liquidações  
+**Objetivo do sistema:** Mantém o ledger (entradas imutáveis) e projeta saldos por grupo; registra quitações/reversões vindas da liquidação; garante soma-zero e auditabilidade do histórico.  
+**Principais atores:** Usuários, sistemas e organizações  
 **Contextos (opcional):** **[Contextos/Bounded Contexts propostos]**
 
 ---
@@ -27,10 +22,11 @@ Preencha a tabela justificando cada tipo (identidade vs. imutabilidade).
 
 | Elemento | Tipo (Entidade/VO) | Por quê? (identidade/imutável) |
 |---|---|---|
-| **[Elemento A]** | [Entidade/VO] | [Justificativa] |
-| **[Elemento B]** | [Entidade/VO] | [Justificativa] |
-| **[Elemento C]** | [Entidade/VO] | [Justificativa] |
-| **[Elemento D]** | [Entidade/VO] | [Justificativa] |
+| **Grupo** | Entidade | Centraliza regras e invariantes do grupo, identidade própria e ciclo de vida longo - Mutável (Membros, configurações) |
+| **Despesa** | Entidade | Tem identidade, estado (draft, confirmada, fechada ou histórico) - Mutável (Estado pode sair de draft para confirmado e assim subsequente) |
+| **Acerto** | Entidade | Representa um evento financeiro único - Imutável (Fato contábil) |
+| **Regra de Rateio** | VO | Descreve como dividir as despesas, parâmetros de calculo - Imutável (Comparado com o valor) |
+| **Money** | VO | Garante operações monetárias - Imutável |
 
 > Dica: Promova tipos semânticos: `Email`, `CPF/CNPJ`, `Money`, `IntervaloDeTempo`, `Endereco`, `Percentual`, `Quantidade`, etc. **VOs devem ser imutáveis** e com **igualdade por valor**.
 
