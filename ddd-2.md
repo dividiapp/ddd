@@ -94,6 +94,10 @@ Nesta aula, vamos:
 | **Liquidação Pix (Conciliação)**    | **PSPs/SPI (externo)**                | **Anticorruption Layer (ACL)**                            | Adapters protegem o modelo do domínio de variações dos provedores Pix. |
 | **OCR & Leitura de Recibos**        | **Provedor OCR (externo)**            | **Anticorruption Layer (ACL)**                            | Tradução de formatos/ruídos do provedor para o modelo interno. |
 
+#### **2.4 Diagrama no Draw.io (LucidChart)**
+
+- [DRAW.IO (LucidChart)]([https://miro.com/](https://lucid.app/lucidchart/46c1c0f6-7610-4f50-b6bd-768f6dff1bbb/edit?viewport_loc=58%2C-340%2C3186%2C1572%2C0_0&invitationId=inv_8a3f5ef5-0312-4d76-9fe2-2efb6464d44e))  
+
 #### **2.5 Justificativas das escolhas**
 - **Published Language (PL):** eventos padronizados (DespesaCriada, PagamentoLiquidado, etc.) reduzem ambiguidade e permitem evolução independente.
 
