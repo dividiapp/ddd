@@ -13,7 +13,7 @@
 **Nome do domínio:** Ledger - Saldos e liquidações  
 **Objetivo do sistema:** Mantém o ledger (entradas imutáveis) e projeta saldos por grupo; registra quitações/reversões vindas da liquidação; garante soma-zero e auditabilidade do histórico.  
 **Principais atores:** Usuários, sistemas e organizações  
-**Contextos (opcional):** **[Contextos/Bounded Contexts propostos]**
+**Contextos (opcional):** **Ledger / Membros**
 
 ---
 
@@ -56,15 +56,19 @@ Liste invariantes (devem ser verdadeiras ao final de cada transação).
 - **Toda despesa precisa pertencer a um grupo;**
 - **Toda despesa fechada, não poderá ser alterada;**
 - **Todo grupo precisa de uma moeda única;**
-- **Todo grupo precisa ter o mínimo de dois membros**
+- **Todo grupo precisa ter o mínimo de dois membros;**
+- **Todo grupo precisa estar ativo para receber despesas;**
+- **O saldo total do grupo, precisa ser soma-zero.**
+
 
 **Estados e transições da AR Grupos:**
 ```
-[EstadoInicial] -> [Estado1] -> [Estado2] -> [EstadoFinal]
+[CriacaoGrupo] -> [InserirDespesa] -> [RegistrarLiquidacao] -> [EncerramentoDoGrupo]
 Regras:
-- [Transição A] permitida se [condições/invariantes]
-- [Transição B] bloqueada se [condições]
-- [Transição C] exige [política/serviço]
+- [CriarGrupo] permitida se [dois membros (owner e um membro)]
+- [InserirDespesa] permitida se [o grupo estiver ativo]
+- [RegistrarLiquidacao] exige [moeda única]
+- [EncerramentoDoGrupo] exige [soma-zero; grupo estiver ativo]
 ```
 
 ---
@@ -73,13 +77,14 @@ Regras:
 > Repositório trabalha **apenas com a AR**, sem expor entidades internas do agregado. Consultas analíticas ficam fora (read models).
 
 **Linguagem livre** (ex.: C#, Java, Kotlin, TS). Exemplo (C# assíncrono, adapte nomes):
-```csharp
-public interface I[Agregado]Repository
-{
-    Task<[Agregado]?> ObterPorIdAsync(Guid id, CancellationToken ct = default);
-    Task AdicionarAsync([Agregado] entidade, CancellationToken ct = default);
-    Task SalvarAsync([Agregado] entidade, CancellationToken ct = default);
+```java
+
+public interface GrupoRepository extends JpaRepository<GrupoEntity, Long>  {
+     Optional<GrupoEntity> obterPorIdAsync(Guid id, List<GrupoEntity>);
+     void adicionarAsync(GrupoEntity entidade);
+     void salvarAsync(GrupoEntity entidade);
 }
+
 ```
 
 
@@ -90,39 +95,105 @@ Defina **2–4 eventos** com **payload mínimo** e **momento de publicação** (
 
 | Evento | Quando ocorre | Payload mínimo | Interno/Integração | Observações |
 |---|---|---|---|---|
-| **[EventoXOcorrido]** | [ao confirmar/remarcar/etc.] | [ids, valores necessários] | [Interno/Integração] | [idempotência, consumidor] |
-| **[EventoYOcorrida]** | [...] | [...] | [...] | [...] |
-| **[EventoZOcorrida]** | [...] | [...] | [...] | [...] |
+| **DespesaRegistrada** | Após persistir nova Despesa no Grupo | grupoId, despesaId, autorId, total, parcelas[] | Integração | Consumido por Reporting, pode acionar Collections para lembrete automático. |
+| **DespesaConfirmada** | Após confirmar uma Despesa draft | grupoId, despesaId, status | Interno | Garante que só despesas confirmadas entram no cálculo de saldos. |
+| **SaldoAtualizado** | Após recalcular projeção de saldos no grupo | grupoId, saldos[] {membroId, valor} | Integração | Alimenta projeções em Reporting e UI em tempo quase real. |
+| **LiquidacaoRegistrada** | Após registrar uma liquidação/acerto | grupoId, liquidacaoId, de, para, valor | Integração | Usado por Reporting, pode notificar Collections (quem já pagou). |
 
 ---
 
-## 🗺️ 8) Diagrama (Mermaid ou ferramenta à sua escolha)
+## 🗺️ 7) Diagrama (Mermaid ou ferramenta à sua escolha)
 > Mostre **Agregados/AR**, **VOs** e **relacionamentos por ID** entre agregados (não “contenha” outros agregados).
 
 **Exemplo de esqueleto Mermaid:**
 ```mermaid
 classDiagram
-  class AgregadoPrincipal {
-    +Guid Id
-    +Guid OutroAgregadoId
-    +VOImportante Valor
-    +Status Estado
-    +Operacao1(args)
-    +Operacao2(args)
-  }
+direction TB
+    class Despesa {
+	    +DespesaId id
+	    +UsuarioId autor
+	    +Money total
+	    +Categoria categoria
+	    +Data data
+	    +List parcelas
+	    +Status status(Draft|Confirmada|Fechada)
+    }
 
-  class VOImportante {
-    +Atributo1
-    +Atributo2
-    +OperacaoVO()
-  }
+    class ParcelaDeDespesa {
+	    +UsuarioId membro
+	    +Money valor
+	    +RegraDeRateio regra
+    }
 
-  class OutroAgregado {
-    +Guid Id
-  }
+    class Liquidacao {
+	    +LiquidacaoId id
+	    +UsuarioId de
+	    +UsuarioId para
+	    +Money valor
+	    +Origem origem
+	    +DataHora hora
+    }
 
-  AgregadoPrincipal --> OutroAgregado : por Id
-  AgregadoPrincipal --> VOImportante
+    class Politicas {
+	    +Arredondamento modo
+	    +Precisao casas
+    }
+
+    class RegraDeRateio {
+	    +Tipo: Igual|Proporcional|Excecao
+	    +parametros
+    }
+
+    class MembroRef {
+	    +UsuarioId id
+	    +Nome nome
+    }
+
+    class Money {
+	    +decimal amount
+	    +Currency currency
+    }
+
+    class Categoria {
+	    +string nome
+    }
+
+    class Origem {
+	    +string ref
+	    +string tipo(PIX|MANUAL)
+    }
+
+    class Grupo {
+	    +GrupoId id
+	    +Moeda moeda
+	    +Politicas politicas
+	    +List membros
+	    +Despesa[] despesas
+	    +criarDespesa()
+	    +registrarLiquidacao()
+	    +fecharMes()
+    }
+
+	<<ValueObject>> ParcelaDeDespesa
+	<<ValueObject>> Politicas
+	<<ValueObject>> RegraDeRateio
+	<<ValueObject>> MembroRef
+	<<ValueObject>> Money
+	<<ValueObject>> Categoria
+	<<ValueObject>> Origem
+
+    Grupo o-- "1..*" Despesa : contém
+    Grupo o-- "1..*" Liquidacao : registra
+    Grupo --> Politicas : aplica
+    Grupo --> MembroRef : referencia
+    Despesa *-- "1..*" ParcelaDeDespesa : compõe
+    ParcelaDeDespesa --> RegraDeRateio : aplica
+    Despesa --> Categoria : classifica
+    Despesa --> Money : total
+    Liquidacao --> Money : valor
+    Liquidacao --> Origem : origem
+    ParcelaDeDespesa --> Money : valor
+
 ```
 
 ---
