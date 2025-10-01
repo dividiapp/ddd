@@ -33,19 +33,19 @@ Preencha a tabela justificando cada tipo (identidade vs. imutabilidade).
 ---
 
 ## 🏗️ 3) Agregados e Aggregate Root (AR)
-**Agregado Principal:** **[Agregado Principal]**  
-**AR:** **[Nome da AR]**  
+**Agregado Principal:** **Grupos**  
+**AR:** **Grupos**  
 **Conteúdo interno do agregado (apenas o necessário para consistência local):**  
-- **[Entidade interna/VO]**
-- **[Entidade interna/VO]**
+- **Despesas (Entidade Interna)**
+- **Políticas (Value Objects)**
+- **Status (Value Objects)**
 
 **Referências a outros agregados (por ID):**  
-- **[OutroAgregadoId]** (não conter dentro do agregado)
-- **[OutroAgregadoId]**
+- **Membros (Referência de Agregado)**
 
 **Boundary — Por que cada item está dentro/fora?**  
-- **Dentro porque [precisa de consistência transacional por causa da invariante X]**  
-- **Fora porque [pode esperar/eventual; pertence a outro BC; só precisa de referência por ID]**
+- **Despesa - Dentro porque uma despesa não pode existir fora de um grupo.**  
+- **Membros - Fora porque só necessita de referência por ID.**
 
 ---
 
@@ -53,12 +53,12 @@ Preencha a tabela justificando cada tipo (identidade vs. imutabilidade).
 Liste invariantes (devem ser verdadeiras ao final de cada transação).
 
 **Invariantes (exemplos):**
-- **[Não aceitar pagamento acima do limite de crédito]**
-- **[Não permitir slot de horário sobreposto para o mesmo recurso]**
-- **[Não permitir alteração após estado X]**
-- **[Preço Total = soma dos itens] (se aplicável)**
+- **Toda despesa precisa pertencer a um grupo;**
+- **Toda despesa fechada, não poderá ser alterada;**
+- **Todo grupo precisa de uma moeda única;**
+- **Todo grupo precisa ter o mínimo de dois membros**
 
-**Estados e transições da AR [Nome da AR]:**
+**Estados e transições da AR Grupos:**
 ```
 [EstadoInicial] -> [Estado1] -> [Estado2] -> [EstadoFinal]
 Regras:
@@ -138,4 +138,3 @@ classDiagram
 
 - **Inclua**: link/imagem do **diagrama** + todas as seções acima preenchidas.
 ---
-
