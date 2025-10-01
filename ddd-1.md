@@ -13,7 +13,7 @@
 **Nome do domínio:** Ledger - Saldos e liquidações  
 **Objetivo do sistema:** Mantém o ledger (entradas imutáveis) e projeta saldos por grupo; registra quitações/reversões vindas da liquidação; garante soma-zero e auditabilidade do histórico.  
 **Principais atores:** Usuários, sistemas e organizações  
-**Contextos (opcional):** **[Contextos/Bounded Contexts propostos]**
+**Contextos (opcional):** **Ledger / Membros**
 
 ---
 
